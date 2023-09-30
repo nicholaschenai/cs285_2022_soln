@@ -11,7 +11,10 @@ MJ_ENV_KWARGS["Ant-v4"]["use_contact_forces"] = True
 def sample_trajectory(env, policy, max_path_length, render=False):
 
     # initialize env for the beginning of a new rollout
-    ob = TODO # HINT: should be the output of resetting the env
+    # ob = TODO # HINT: should be the output of resetting the env
+    ### My code starts here ###
+    ob = env.reset()
+    ### My ends starts here ###
 
     # init vars
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
@@ -27,7 +30,10 @@ def sample_trajectory(env, policy, max_path_length, render=False):
 
         # use the most recent ob to decide what to do
         obs.append(ob)
-        ac = TODO # HINT: query the policy's get_action function
+        # ac = TODO # HINT: query the policy's get_action function
+        ### My code starts here ###
+        ac = policy.get_action(ob)
+        ### My code ends here ###
         ac = ac[0]
         acs.append(ac)
 
@@ -41,7 +47,10 @@ def sample_trajectory(env, policy, max_path_length, render=False):
 
         # TODO end the rollout if the rollout ended
         # HINT: rollout can end due to done, or due to max_path_length
-        rollout_done = TODO # HINT: this is either 0 or 1
+        # rollout_done = TODO # HINT: this is either 0 or 1
+        ### My code starts here ###
+        rollout_done = (steps >= max_path_length) or done
+        ### My code ends here ###
         terminals.append(rollout_done)
 
         if rollout_done:
@@ -60,8 +69,13 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_per_batch:
-
-        TODO
+        ### My code starts here ###
+        # see 2023, has ans
+        pth = sample_trajectory(env, policy, max_path_length, render=render)
+        paths.append(pth)
+        ts = get_pathlength(pth)
+        timesteps_this_batch += ts
+        ### My code ends here ###
 
     return paths, timesteps_this_batch
 
@@ -74,7 +88,12 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
     """
     paths = []
 
-    TODO
+    ### My code starts here ###
+    # ans in 2023
+    for i in range(ntraj):
+        pth = sample_trajectory(env, policy, max_path_length, render=render)
+        paths.append(pth)
+    ### My code ends here ###
 
     return paths
 

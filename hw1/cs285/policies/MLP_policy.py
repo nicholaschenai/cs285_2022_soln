@@ -81,7 +81,15 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             observation = obs[None]
 
         # TODO return the action that the policy prescribes
-        raise NotImplementedError
+        # raise NotImplementedError
+        ### My code starts here ###
+        # note to self: the obs[None] is to add a dimension at the front
+        # so its like a batch dimension, to make it compatible with batch ops
+        observation = ptu.from_numpy(observation.astype(np.float32))
+        with torch.no_grad():
+            action = self(observation)
+        return ptu.to_numpy(action)
+        ### My code ends here ###
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
@@ -93,8 +101,16 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor) -> Any:
-        raise NotImplementedError
+        # raise NotImplementedError
 
+        ### My code starts here ###
+        # return self.mean_net(observation) + self.logstd
+        # I /think/ they mean gaussian MLP policy. also consider using torch distributions and
+        # sample/ rsample (reparam trick)
+        # actually if theres no randomness, outright at start of iteration we get near expert performance
+        # for both BC and DAgger. evaluated on 10k iter, rest are default settings
+        return self.mean_net(observation) + torch.exp(self.logstd) * torch.randn_like(self.logstd)
+        ### My code ends here ###
 
 #####################################################
 #####################################################
@@ -109,7 +125,19 @@ class MLPPolicySL(MLPPolicy):
             adv_n=None, acs_labels_na=None, qvals=None
     ):
         # TODO: update the policy and return the loss
-        loss = TODO
+        # loss = TODO
+
+        ### My code starts here ###
+        observation = ptu.from_numpy(observations.astype(np.float32))
+        actions = ptu.from_numpy(actions.astype(np.float32))
+        pol_ac = self(observation)
+        loss = self.loss(pol_ac, actions)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        ### My code ends here ###
+
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),
