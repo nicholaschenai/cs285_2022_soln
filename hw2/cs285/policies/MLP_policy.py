@@ -179,7 +179,7 @@ class MLPPolicyPG(MLPPolicy):
             q_values_norm = ptu.from_numpy(q_values_norm)
 
             
-            baseline_loss = self.baseline_loss(q_values_norm, y)
+            baseline_loss = self.baseline_loss(q_values_norm, y.squeeze())
             baseline_loss.backward()
             self.baseline_optimizer.step()
             ### my code ends here ###
