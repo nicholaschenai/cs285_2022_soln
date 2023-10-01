@@ -1,0 +1,30 @@
+For my expts, I originally ran with averaging over all the transitions
+but this is not right as the average is over trajectories
+so i made some adjustments so that N can  be obtained during the update step
+also in 2023 ver, they switched to averaging over trajectories
+
+
+expt 1 small batch: first 3 are with averaging over transitions. 
+rest of expts use averaging over N
+
+for expt 1, there was a bit of brittle behavior for RTG DSA at the end
+
+qns:
+
+– Which value estimator has better performance without advantage-standardization: the trajectorycentric
+one, or the one using reward-to-go?
+
+a: RTG
+
+– Did advantage standardization help?
+a: Not much diff for this case
+
+– Did the batch size make an impact?
+a: yes, training is a lot more stable and converges to max faster
+
+
+expt 2:
+
+python cs285/scripts/run_hw2.py --env_name InvertedPendulum-v4 --ep_len 1000 --discount 0.9 -n 100 -l 2 -s 64 -b 5000 -rtg --exp_name q2_b5000_r_default
+
+cant be bothered to tune params. achieves max score after 60 iters, but brittle behavior afterwards
