@@ -79,6 +79,7 @@ class ReplayBuffer(object):
 
         # return TODO, TODO, TODO, TODO, TODO
         ### My code starts here ###
+        # note: ans in asg 2, correct
         idxs = np.random.permutation(self.obs.shape[0])[:batch_size]
         return (
             self.obs[idxs],

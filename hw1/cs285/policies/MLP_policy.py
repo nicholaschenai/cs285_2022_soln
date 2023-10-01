@@ -109,6 +109,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # sample/ rsample (reparam trick)
         # actually if theres no randomness, outright at start of iteration we get near expert performance
         # for both BC and DAgger. evaluated on 10k iter, rest are default settings
+
+        # note: asg 2 has ans but not sure if its what was intended for this asg
         return self.mean_net(observation) + torch.exp(self.logstd) * torch.randn_like(self.logstd)
         ### My code ends here ###
 

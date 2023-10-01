@@ -50,7 +50,7 @@ def build_mlp(
     # raise NotImplementedError
 
     ### My code starts here ###
-    # Note: 2023 gives the ans sorta, adapting it
+    # Note: asg 2 has the ans. actually in 2023 asg 1, this was given
     layers = []
     in_size = input_size
     for _ in range(n_layers):
