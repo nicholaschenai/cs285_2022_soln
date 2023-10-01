@@ -2,6 +2,8 @@ from typing import Union
 
 import torch
 from torch import nn
+import torch_xla
+import torch_xla.core.xla_model as xm
 
 Activation = Union[str, nn.Module]
 
@@ -63,7 +65,10 @@ device = None
 
 def init_gpu(use_gpu=True, gpu_id=0):
     global device
-    if torch.cuda.is_available() and use_gpu:
+    dev = xm.xla_device()
+    if dev.type=='xla':
+        device = dev
+    elif torch.cuda.is_available() and use_gpu:
         device = torch.device("cuda:" + str(gpu_id))
         print("Using GPU id {}".format(gpu_id))
     else:
