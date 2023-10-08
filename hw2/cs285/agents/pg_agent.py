@@ -169,6 +169,7 @@ class PGAgent(BaseAgent):
             # advantages = TODO
             ### my code starts here ###
             # note: 2023 suggests norm within the batch so this is right
+            # note: see asg 3 for cleaner implementation in ac_agent.py/estimate_advantage esp adding stability term
             mu = np.mean(advantages)
             sigma = np.std(advantages)
             advantages = (advantages-mu)/sigma

@@ -87,6 +87,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         # retrieved from HW1
+        # NOTE: see asg 3, adaptation from 2023
         if len(obs.shape) > 1:
             observation = obs
         else:
