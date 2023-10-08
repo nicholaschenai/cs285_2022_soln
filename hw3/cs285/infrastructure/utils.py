@@ -54,8 +54,67 @@ def mean_squared_error(a, b):
 ############################################
 ############################################
 
-def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array')):
+def sample_trajectory(env, policy, max_length, render=False, render_mode=('rgb_array')):
     # TODO: get this from hw1 or hw2
+    # taken from hw3 2023, slightly mod for render mode
+    ob = env.reset()
+    obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
+    steps = 0
+
+    while True:
+        # render an image
+        if render:
+            if hasattr(env, "sim"):
+                img = env.sim.render(camera_name="track", height=500, width=500)[::-1]
+            else:
+                img = env.render(mode="rgb_array")
+
+            if isinstance(img, list):
+                img = img[0]
+
+            image_obs.append(
+                cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC)
+            )
+
+        # TODO use the most recent ob to decide what to do
+        ac = policy.get_action(ob)
+
+        # TODO: take that action and get reward and next ob
+        next_ob, rew, done, info = env.step(ac)
+
+        # TODO rollout can end due to done, or due to max_length
+        steps += 1
+        rollout_done = done or steps > max_length  # HINT: this is either 0 or 1
+
+        # record result of taking that action
+        obs.append(ob)
+        acs.append(ac)
+        rewards.append(rew)
+        next_obs.append(next_ob)
+        terminals.append(rollout_done)
+
+        ob = next_ob  # jump to next timestep
+
+        # end the rollout if the rollout ended
+        if rollout_done:
+            break
+
+    episode_statistics = {"l": steps, "r": np.sum(rewards)}
+    if "episode" in info:
+        episode_statistics.update(info["episode"])
+
+    env.close()
+
+    return {
+        "observation": np.array(obs, dtype=np.float32),
+        "image_obs": np.array(image_obs, dtype=np.uint8),
+        "reward": np.array(rewards, dtype=np.float32),
+        "action": np.array(acs, dtype=np.float32),
+        "next_observation": np.array(next_obs, dtype=np.float32),
+        "terminal": np.array(terminals, dtype=np.float32),
+        "episode_statistics": episode_statistics,
+    }
+
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
     """
@@ -63,16 +122,30 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
         until we have collected min_timesteps_per_batch steps
     """
     # TODO: get this from hw1 or hw2
+    # taken from hw3 2023, slightly mod for render mode
+    timesteps_this_batch = 0
+    trajs = []
+    while timesteps_this_batch < min_timesteps_per_batch:
+        # collect rollout
+        traj = sample_trajectory(env, policy, max_path_length, render, render_mode)
+        trajs.append(traj)
 
-    return paths, timesteps_this_batch
+        # count steps
+        timesteps_this_batch += get_pathlength(traj)
+    return trajs, timesteps_this_batch
 
 def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, render_mode=('rgb_array')):
     """
         Collect ntraj rollouts using policy
     """
     # TODO: get this from hw1 or hw2
-
-    return paths
+    # taken from hw3 2023, slightly mod for render mode
+    trajs = []
+    for _ in range(ntraj):
+        # collect rollout
+        traj = sample_trajectory(env, policy, max_path_length, render, render_mode)
+        trajs.append(traj)
+    return trajs
 
 ############################################
 ############################################

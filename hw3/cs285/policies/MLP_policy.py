@@ -87,7 +87,16 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         # TODO: get this from hw1 or hw2
-        return action
+        # heavily adapted from hw3 2023
+        with torch.no_grad():
+            observation = ptu.from_numpy(obs)[None]
+
+            action_distribution: torch.distributions.Distribution = self(observation)
+            action: torch.Tensor = action_distribution.sample()
+            # I think this should be action_distribution.shape?
+            # assert action.shape == (1, self.ac_dim), action.shape
+            return ptu.to_numpy(action).squeeze(0)
+
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
@@ -100,7 +109,21 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
         # TODO: get this from hw1 or hw2
-        return action_distribution
+        if self.discrete:
+            # note to self: in Categorical, logits can be unnormalized (even negative), so no need softmax
+            logits = self.logits_na(observation)
+            action_distribution = distributions.Categorical(logits=logits)
+            return action_distribution
+        else:
+            batch_mean = self.mean_net(observation)
+            scale_tril = torch.diag(torch.exp(self.logstd))
+            batch_dim = batch_mean.shape[0]
+            batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            action_distribution = distributions.MultivariateNormal(
+                batch_mean,
+                scale_tril=batch_scale_tril,
+            )
+            return action_distribution
 
 
 #####################################################
@@ -110,4 +133,18 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 class MLPPolicyAC(MLPPolicy):
     def update(self, observations, actions, adv_n=None):
         # TODO: update the policy and return the loss
+
+        ### my code starts here ###
+        # observations = ptu.from_numpy(observations)
+        # actions = ptu.from_numpy(actions)
+        # advantages = ptu.from_numpy(adv_n)
+
+        self.optimizer.zero_grad()
+        m = self(observations)
+        loss = -(m.log_prob(actions) * adv_n).mean()
+        
+        loss.backward()
+        self.optimizer.step()
+        ### my code ends here ###
+
         return loss.item()
