@@ -18,7 +18,7 @@ seems like 10, 10 is the best setting
 
 
 # Question 5: Run soft actor-critic with more difficult tasks
-
+Note: using v4 instead of v2 due to dependencies issues
 ![](./imgs/q5a.png)
 ![](./imgs/q5b.png)
 
