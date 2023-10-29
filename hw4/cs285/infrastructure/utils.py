@@ -54,25 +54,126 @@ def mean_squared_error(a, b):
 ############################################
 ############################################
 
-def sample_trajectory(env, policy, max_path_length, render=False):
+# def sample_trajectory(env, policy, max_path_length, render=False):
 # TODO: get this from previous HW
 
-def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False):
-    """
-        Collect rollouts using policy
-        until we have collected min_timesteps_per_batch steps
-    """
-    # TODO: get this from previous HW
+# from cs285 2023
+def sample_trajectory(
+        env, policy, max_path_length: int, render: bool = False
+):
+    """Sample a rollout in the environment from a policy."""
+    ob = env.reset()
+    obs, acs, rewards, next_obs, dones, image_obs = [], [], [], [], [], []
+    steps = 0
 
-    return paths, timesteps_this_batch
+    while True:
+        # render an image
+        if render:
+            if hasattr(env, "sim"):
+                img = env.sim.render(camera_name="track", height=500, width=500)[::-1]
+            else:
+                img = env.render(mode="rgb_array")
 
-def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
-    """
-        Collect ntraj rollouts using policy
-    """
-    # TODO: get this from Piazza
+            if isinstance(img, list):
+                img = img[0]
 
-    return paths
+            image_obs.append(
+                cv2.resize(img, dsize=(250, 250), interpolation=cv2.INTER_CUBIC)
+            )
+
+        ac = policy.get_action(ob)
+
+        # print(f'ac dim b4 {ac.shape}')
+        if len(ac.shape)>1:
+            ac = np.squeeze(ac, 0)
+        # print(f'ac dim aft {ac.shape}')
+
+        next_ob, rew, done, info = env.step(ac)
+
+        steps += 1
+        # only record a "done" into the replay buffer if not truncated
+        done_not_truncated = (
+                done and steps <= max_path_length and not info.get("TimeLimit.truncated", False)
+        )
+
+        # record result of taking that action
+        obs.append(ob)
+        acs.append(ac)
+        rewards.append(rew)
+        next_obs.append(next_ob)
+        dones.append(done_not_truncated)
+
+        ob = next_ob  # jump to next timestep
+
+        # end the rollout if the rollout ended
+        if done or steps > max_path_length:
+            break
+
+    episode_statistics = {"l": steps, "r": np.sum(rewards)}
+    if "episode" in info:
+        episode_statistics.update(info["episode"])
+
+    env.close()
+
+    return {
+        "observation": np.array(obs, dtype=np.float32),
+        "image_obs": np.array(image_obs, dtype=np.uint8),
+        "reward": np.array(rewards, dtype=np.float32),
+        "action": np.array(acs, dtype=np.float32),
+        "next_observation": np.array(next_obs, dtype=np.float32),
+        "terminal": np.array(dones, dtype=np.float32),
+        "episode_statistics": episode_statistics,
+    }
+
+
+# def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False):
+#     """
+#         Collect rollouts using policy
+#         until we have collected min_timesteps_per_batch steps
+#     """
+#     # TODO: get this from previous HW
+#
+#     return paths, timesteps_this_batch
+
+# from cs285 2023
+def sample_trajectories(
+    env,
+    policy,
+    min_timesteps_per_batch: int,
+    max_length: int,
+    render: bool = False,
+):
+    """Collect rollouts using policy until we have collected min_timesteps_per_batch steps."""
+    timesteps_this_batch = 0
+    trajs = []
+    while timesteps_this_batch < min_timesteps_per_batch:
+        # collect rollout
+        traj = sample_trajectory(env, policy, max_length, render)
+        trajs.append(traj)
+
+        # count steps
+        timesteps_this_batch += len(traj["reward"])
+    return trajs, timesteps_this_batch
+
+# def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
+#     """
+#         Collect ntraj rollouts using policy
+#     """
+#     # TODO: get this from Piazza
+#
+#     return paths
+
+# from cs285 2023
+def sample_n_trajectories(
+    env, policy, ntraj: int, max_length: int, render: bool = False
+):
+    """Collect ntraj rollouts."""
+    trajs = []
+    for i in range(ntraj):
+        # collect rollout
+        traj = sample_trajectory(env, policy, max_length, render)
+        trajs.append(traj)
+    return trajs
 
 ############################################
 ############################################

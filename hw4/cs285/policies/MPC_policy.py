@@ -53,6 +53,16 @@ class MPCPolicy(BasePolicy):
             # TODO(Q1) uniformly sample trajectories and return an array of
             # dimensions (num_sequences, horizon, self.ac_dim) in the range
             # [self.low, self.high]
+
+            # from 2023
+            ## my code here ##
+            random_action_sequences = np.random.uniform(
+                self.low,
+                self.high,
+                size=(num_sequences, horizon, self.ac_dim),
+            )
+            ## my code here ##
+
             return random_action_sequences
         elif self.sample_strategy == 'cem':
             # TODO(Q5): Implement action selection using CEM.
@@ -68,10 +78,42 @@ class MPCPolicy(BasePolicy):
                 #     (Hint: what existing function can we use to compute rewards for
                 #      our candidate sequences in order to rank them?)
                 # - Update the elite mean and variance
-                pass
+                # pass
 
+                ####### my code here #########
+                # note: not sure if each action dim should be independent, but i just assume so to be general
+                if i==0:
+                    candidate_action_sequences = np.random.uniform(
+                        self.low,
+                        self.high,
+                        size=(num_sequences, horizon, self.ac_dim),
+                    )
+                    # after mean/var becomes (t, self.ac_dim)
+                    elite_mean = candidate_action_sequences.mean(axis=0)
+                    elite_var = candidate_action_sequences.var(axis=0)
+
+                else:
+                    # TODO: broadcasting error in np.clip? my intent is to act on ac_dim only
+                    # TODO: print all variable shapes incase of broadcasting errors. isit related to flatten?
+                    # flatten as elite_mean, elite_var originally 2D
+                    candidate_action_sequences = np.random.multivariate_normal(elite_mean.flatten(), np.diag(elite_var.flatten()), num_sequences)
+                    # print(f'multivar norm shape {candidate_action_sequences.shape}')
+                    # multivariate_normal puts the mean dim (t * self.ac_dim) at the back so need to rearrange
+                    candidate_action_sequences = candidate_action_sequences.reshape(num_sequences, horizon, self.ac_dim)
+                    candidate_action_sequences = np.clip(candidate_action_sequences, self.low, self.high)
+                
+                reward_list = self.evaluate_candidate_sequences(candidate_action_sequences, obs)
+                # Note: argpartition runs in linear time to get top k idx, but the top k idxs arent sorted but its ok for us
+                top_idxs = np.argpartition(reward_list, -self.cem_num_elites)[-self.cem_num_elites:]
+                
+                elite_action_sequences = candidate_action_sequences[top_idxs]
+                elite_mean = self.cem_alpha*elite_action_sequences.mean(axis=0) + (1-self.cem_alpha) * elite_mean
+                elite_var = self.cem_alpha*elite_action_sequences.var(axis=0) + (1-self.cem_alpha) * elite_var
+                
             # TODO(Q5): Set `cem_action` to the appropriate action chosen by CEM
-            cem_action = None
+            # cem_action = None
+            cem_action = np.clip(elite_mean, self.low, self.high)
+            ####### my code here #########
 
             return cem_action[None]
         else:
@@ -83,10 +125,14 @@ class MPCPolicy(BasePolicy):
         #
         # Then, return the mean predictions across all ensembles.
         # Hint: the return value should be an array of shape (N,)
-        for model in self.dyn_models: 
-            pass
-
-        return TODO
+        sum_reward_list = []
+        for model in self.dyn_models:
+            ### my code starts here ####
+            sum_reward_list.append(self.calculate_sum_of_rewards(obs, candidate_action_sequences, model))
+        sum_reward_list = np.stack(sum_reward_list, axis=1)
+        # return TODO
+        return sum_reward_list.mean(axis=1)
+        ### my code ends here ####
 
     def get_action(self, obs):
         if self.data_statistics is None:
@@ -103,8 +149,15 @@ class MPCPolicy(BasePolicy):
             predicted_rewards = self.evaluate_candidate_sequences(candidate_action_sequences, obs)
 
             # pick the action sequence and return the 1st element of that sequence
-            best_action_sequence = None  # TODO (Q2)
-            action_to_take = None  # TODO (Q2)
+            # best_action_sequence = None  # TODO (Q2)
+            # action_to_take = None  # TODO (Q2)
+
+            ### my code starts here ####
+            # see 2023
+            best_idx = np.argmax(predicted_rewards)
+            best_action_sequence = candidate_action_sequences[best_idx]
+            action_to_take = best_action_sequence[0]
+            ### my code ends here ####
             return action_to_take[None]  # Unsqueeze the first index
 
     def calculate_sum_of_rewards(self, obs, candidate_action_sequences, model):
@@ -120,7 +173,7 @@ class MPCPolicy(BasePolicy):
         :return: numpy array with the sum of rewards for each action sequence.
         The array should have shape [N].
         """
-        sum_of_rewards = None  # TODO (Q2)
+        # sum_of_rewards = None  # TODO (Q2)
         # For each candidate action sequence, predict a sequence of
         # states for each dynamics model in your ensemble.
         # Once you have a sequence of predicted states from each model in
@@ -132,4 +185,21 @@ class MPCPolicy(BasePolicy):
         # Hint: Remember that the model can process observations and actions
         #       in batch, which can be much faster than looping through each
         #       action sequence.
+
+        ### my code starts here ####
+        # a bit confusing. it sounds like obs is s_t so need to call it with a_t to get s_{t+1}
+
+        # but from the description and 2023 asg, it does seem like the get_reward should be called on
+        # (s_{t+1}, a_t) despite the eqns stating c(s_t, a_t)
+
+        obs_batch = np.tile(obs, (self.N, 1))
+        sum_of_rewards = np.zeros(self.N)
+        for i in range(self.horizon):
+            ac_batch = candidate_action_sequences[:, i, :]
+            obs_batch = model.get_prediction(obs_batch, ac_batch, self.data_statistics)
+            
+            batch_reward, _ = self.env.get_reward(obs_batch, ac_batch)
+            sum_of_rewards += batch_reward
+
+        ### my code ends here ####
         return sum_of_rewards
