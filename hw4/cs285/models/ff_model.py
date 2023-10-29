@@ -123,6 +123,7 @@ class FFModel(nn.Module, BaseModel):
         # outputs.
 
         ##### my code here ######
+        # note: with torch no grad here?
         prediction, _ = self.forward(ptu.from_numpy(obs),
                                      ptu.from_numpy(acs),
                                      ptu.from_numpy(data_statistics['obs_mean']),
