@@ -44,14 +44,11 @@ Higher numseq leads to higher performance, makes sense
 Larger ensemble leads to higher performance, makes sense
 
 # Problem 5: Comparison against CEM
+![](./imgs/q5.png)
 
+CEM 4 early stop as reward > 800 reached
 
-![](./imgs/q5a.png)
-![](./imgs/q5b.png)
-
-how does CEM affects
-
-results for different numbers of sampling iterations (2 vs. 4).
+CEM improves over random, and higher sampling iteration improves performance
 
 # Problem 6: MBPO + SAC
 
